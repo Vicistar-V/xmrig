@@ -434,7 +434,7 @@ Write-Ok "Wrote uninstall.ps1"
 #      crash slows down and stops burning CPU on restart overhead.
 #    - Bounded WaitForExit so a zombie xmrig can't hold the mutex forever.
 # ---------------------------------------------------------------------------
-$mutexName     = "Global\XMRigMinerMutex"
+$mutexName     = "Local\XMRigMinerMutex"
 $xmrigEsc      = $xmrigExe   -replace "'","''"
 $installDirEsc = $installDir -replace "'","''"
 
