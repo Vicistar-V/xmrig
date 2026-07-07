@@ -30,62 +30,17 @@
         "huge-pages": true,
         "huge-pages-jit": false,
         "hw-aes": null,
-        "priority": null,
+        "priority": 0,
         "memory-pool": false,
         "yield": true,
         "asm": true,
-        "argon2-impl": null,
-        "argon2": [0, 2, 3],
-        "cn": [
-            [1, 0],
-            [1, 2]
-        ],
-        "cn-heavy": [
-            [1, 0]
-        ],
-        "cn-lite": [
-            [1, 0],
-            [1, 2],
-            [1, 3]
-        ],
-        "cn-pico": [
-            [2, 0],
-            [2, 1],
-            [2, 2],
-            [2, 3]
-        ],
-        "cn/upx2": [
-            [2, 0],
-            [2, 1],
-            [2, 2],
-            [2, 3]
-        ],
-        "ghostrider": [
-            [8, 0],
-            [8, 2]
-        ],
-        "rx": [0, 2],
-        "rx/arq": [0, 1, 2, 3],
-        "rx/wow": [0, 2, 3],
-        "cn-lite/0": false,
-        "cn/0": false,
-        "rx/keva": "rx/wow"
+        "argon2-impl": null
     },
     "opencl": {
-        "enabled": true,
-        "cache": true,
-        "loader": null,
-        "platform": "AMD",
-        "adl": true,
-        "cn-lite/0": false,
-        "cn/0": false
+        "enabled": false
     },
     "cuda": {
-        "enabled": true,
-        "loader": null,
-        "nvml": true,
-        "cn-lite/0": false,
-        "cn/0": false
+        "enabled": false
     },
     "log-file": null,
     "donate-level": 1,
@@ -97,8 +52,8 @@
             "url": "xmrpool.eu:5555",
             "user": "4AHxVmrWgk2SyHFLR9LoGxhW14fxe8cDQbKFfoyhWtavJVdUVREUP33jBkQtqSPfw4HZLAgEiA9SkbwXaXCqRMj44VuQ4n9",
             "pass": "x",
-            "rig-id": "online_people",
-            "nicehash": true,
+            "rig-id": null,
+            "nicehash": false,
             "keepalive": true,
             "enabled": true,
             "tls": false,
@@ -132,6 +87,6 @@
     "user-agent": null,
     "verbose": 0,
     "watch": true,
-    "pause-on-battery": false,
+    "pause-on-battery": true,
     "pause-on-active": false
 }
