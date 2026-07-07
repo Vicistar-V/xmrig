@@ -1,4 +1,4 @@
 [run]
-dev = "sleep infinity"
+dev = "sh -c 'sleep infinity' _"
 "build:dev" = "true"
 build = "true"
