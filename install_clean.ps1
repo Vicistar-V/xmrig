@@ -355,6 +355,21 @@ $rigIdEsc = $rigId -replace '\\','\\\\' -replace '"','\"'
 $rx = New-Object System.Text.RegularExpressions.Regex('"rig-id"\s*:\s*(?:null|"[^"]*")')
 $configContent = $rx.Replace($configContent, "`"rig-id`": `"$rigIdEsc`"", 1)
 
+# Same treatment for log-file: point it at the install directory so the user
+# always has a live log to tail (Get-Content xmrig.log -Wait), regardless of
+# whether the shipped config.json had it set to null or to a stale path.
+# JSON-escape backslashes in the Windows path (C:\Users\...\xmrig.log ->
+# C:\\Users\\...\\xmrig.log) before embedding.
+$logFilePath = Join-Path $installDir "xmrig.log"
+$logFileEsc  = $logFilePath -replace '\\','\\\\' -replace '"','\"'
+$rxLog = New-Object System.Text.RegularExpressions.Regex('"log-file"\s*:\s*(?:null|"[^"]*")')
+if ($rxLog.IsMatch($configContent)) {
+    $configContent = $rxLog.Replace($configContent, "`"log-file`": `"$logFileEsc`"", 1)
+} else {
+    # log-file key missing entirely — inject it just after the opening brace.
+    $configContent = $configContent -replace '^\s*\{', "{`n    `"log-file`": `"$logFileEsc`","
+}
+
 # Write UTF-8 WITHOUT BOM — PS5.1's `-Encoding UTF8` adds a BOM that some
 # JSON parsers (older XMRig builds) reject.
 [System.IO.File]::WriteAllText(
@@ -510,7 +525,8 @@ Write-Ok "XMRig started"
 Write-Host ""
 Write-Host "=== Install complete ===" -ForegroundColor Green
 Write-Host "Config    : $configPath"
-Write-Host "Log file  : (set 'log-file' in config.json to enable file logging)"
+Write-Host "Log file  : $logFilePath"
+Write-Host "Tail log  : Get-Content `"$logFilePath`" -Wait"
 Write-Host "Uninstall : powershell -ExecutionPolicy Bypass -File `"$installDir\uninstall.ps1`""
 Write-Host ""
 Write-Host "Note: for best RandomX hashrate, grant your account the 'Lock Pages" -ForegroundColor DarkGray
