@@ -84,6 +84,7 @@ if (-not $isAdmin) {
     # Always re-download the script rather than serializing $MyInvocation.
     # ScriptBlock.ToString() loses formatting and re-interpolates here-strings.
     $scriptPath = Join-Path $env:TEMP ("xmrig_installer_{0}.ps1" -f $PID)
+    $logPath    = Join-Path $env:TEMP ("xmrig_installer_{0}.log" -f $PID)
     try {
         Invoke-WebRequest -Uri $ScriptUrl -OutFile $scriptPath -UseBasicParsing
     } catch {
@@ -91,12 +92,38 @@ if (-not $isAdmin) {
         exit 1
     }
 
-    # Pass args as an ARRAY so PowerShell does its own quoting. Never build
-    # one big string — paths with spaces or apostrophes will split.
+    # Elevated window MUST stay open on failure so the user can read the error.
+    # Default behavior of `powershell -File script.ps1` under RunAs is to close
+    # instantly on any unhandled exception (ErrorActionPreference=Stop above),
+    # taking every diagnostic message with it. Wrap in a `-Command` that:
+    #   1. Tees everything to a log file in %TEMP% (survives the window closing).
+    #   2. Catches every terminating error and prints it in red.
+    #   3. Pauses at the end no matter what — success OR failure — so the
+    #      window sticks around until the user presses a key.
+    # Args to the inner script are embedded literally (SID + path already
+    # validated as safe strings — no user input surface here).
+    $inner = @"
+`$ErrorActionPreference = 'Continue'
+Start-Transcript -Path '$logPath' -Force | Out-Null
+try {
+    & '$scriptPath' -OrigUserSid '$capturedSid' -OrigLocalAppData '$capturedLocalAppData'
+} catch {
+    Write-Host ''
+    Write-Host '[x] INSTALLER FAILED:' -ForegroundColor Red
+    Write-Host `$_.Exception.Message   -ForegroundColor Red
+    Write-Host ''
+    Write-Host `$_.ScriptStackTrace    -ForegroundColor DarkGray
+}
+Stop-Transcript | Out-Null
+Write-Host ''
+Write-Host 'Log saved to: $logPath' -ForegroundColor Yellow
+Write-Host 'Press any key to close this window...' -ForegroundColor Yellow
+`$null = `$Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
+"@
+
     $childArgs = @(
-        "-ExecutionPolicy","Bypass","-NoProfile","-File",$scriptPath,
-        "-OrigUserSid",$capturedSid,
-        "-OrigLocalAppData",$capturedLocalAppData
+        "-ExecutionPolicy","Bypass","-NoProfile","-NoLogo",
+        "-Command", $inner
     )
 
     Start-Process -FilePath "powershell.exe" -ArgumentList $childArgs -Verb RunAs
