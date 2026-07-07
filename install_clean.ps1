@@ -45,6 +45,18 @@ if (-not $isAdmin) {
 }
 
 # ---------------------------------------------------------------------------
+# 1b. Single-instance guard for the installer itself
+# ---------------------------------------------------------------------------
+$installerMutexName = "Global\XMRigInstallerMutex"
+$installerMutex = New-Object System.Threading.Mutex($false, $installerMutexName)
+if (-not $installerMutex.WaitOne(0, $false)) {
+    Write-Warn "Another XMRig installer is already running. Exiting."
+    exit
+}
+
+
+
+# ---------------------------------------------------------------------------
 # 2. Configuration
 # ---------------------------------------------------------------------------
 $installDir   = Join-Path $env:LOCALAPPDATA "Programs\XMRig"
