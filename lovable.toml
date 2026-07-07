@@ -1,0 +1,4 @@
+[run]
+dev = "sleep infinity"
+"build:dev" = "true"
+build = "true"
