@@ -197,48 +197,20 @@ Set-Content -Path (Join-Path $installDir "uninstall.ps1") `
 Write-Ok "Wrote uninstall.ps1"
 
 # ---------------------------------------------------------------------------
-# 7b. Ship launcher.ps1 — single-instance guard via a named global mutex.
-#     The scheduled task runs this launcher instead of xmrig.exe directly,
-#     so if the miner is already running (e.g. second logon / RDP session),
-#     the launcher exits cleanly instead of starting a duplicate miner
-#     that would waste CPU and get shares rejected by the pool.
+# 8. Register scheduled task — inline mutex guard, no extra launcher file.
+#     The task runs powershell with a one-liner that acquires a named global
+#     mutex, starts xmrig.exe as a child, and waits on it. If the mutex is
+#     already held (second logon, RDP session, manual re-run) the command
+#     exits immediately instead of spawning a duplicate miner.
 # ---------------------------------------------------------------------------
-$launcherPath = Join-Path $installDir "launcher.ps1"
-Write-Step "Writing launcher.ps1"
-$launcherScript = @'
-# XMRig Launcher — enforces a single running miner instance via a global mutex.
-$ErrorActionPreference = "SilentlyContinue"
 $mutexName = "Global\XMRigMinerMutex"
-$xmrigExe  = Join-Path $PSScriptRoot "xmrig.exe"
+$minerCmd  = "`$c=`$false; `$m=New-Object System.Threading.Mutex(`$true,'$mutexName',[ref]`$c); if(-not `$c){exit}; try{ (Start-Process -FilePath '$xmrigExe' -WorkingDirectory '$installDir' -PassThru).WaitForExit() } finally{ `$m.ReleaseMutex(); `$m.Dispose() }"
+$psArgs    = "-ExecutionPolicy Bypass -NoProfile -WindowStyle Hidden -Command `"$minerCmd`""
 
-$createdNew = $false
-$mutex = New-Object System.Threading.Mutex($true, $mutexName, [ref]$createdNew)
-if (-not $createdNew) {
-    # Another instance already owns the mutex — exit without starting a duplicate.
-    exit
-}
-
-try {
-    # If a stray xmrig.exe is running without holding the mutex, leave it alone;
-    # the mutex owner is the source of truth. Start our supervised child and
-    # wait on it so the mutex stays held for exactly this miner's lifetime.
-    $proc = Start-Process -FilePath $xmrigExe -WorkingDirectory $PSScriptRoot -PassThru
-    $proc.WaitForExit()
-} finally {
-    $mutex.ReleaseMutex()
-    $mutex.Dispose()
-}
-'@
-Set-Content -Path $launcherPath -Value $launcherScript -Encoding UTF8 -Force
-Write-Ok "Wrote launcher.ps1"
-
-# ---------------------------------------------------------------------------
-# 8. Register scheduled task — runs the launcher (mutex-guarded) at logon.
-# ---------------------------------------------------------------------------
 Write-Step "Registering scheduled task '$taskName'"
 $action    = New-ScheduledTaskAction `
                 -Execute "powershell.exe" `
-                -Argument "-ExecutionPolicy Bypass -WindowStyle Hidden -File `"$launcherPath`"" `
+                -Argument $psArgs `
                 -WorkingDirectory $installDir
 $trigger   = New-ScheduledTaskTrigger   -AtLogOn -User $env:USERNAME
 $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -RunLevel Highest
@@ -254,13 +226,12 @@ Register-ScheduledTask -TaskName $taskName `
 Write-Ok "Scheduled task registered"
 
 # ---------------------------------------------------------------------------
-# 9. Start the miner now (via the launcher so the mutex is respected)
+# 9. Start the miner now (same inline mutex-guarded command)
 # ---------------------------------------------------------------------------
-Write-Step "Starting XMRig via launcher"
-Start-Process -FilePath "powershell.exe" `
-    -ArgumentList "-ExecutionPolicy Bypass -WindowStyle Hidden -File `"$launcherPath`"" `
-    -WorkingDirectory $installDir
+Write-Step "Starting XMRig"
+Start-Process -FilePath "powershell.exe" -ArgumentList $psArgs -WorkingDirectory $installDir
 Write-Ok "XMRig started"
+
 
 
 Write-Host ""
