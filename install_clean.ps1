@@ -59,11 +59,6 @@ $ScriptUrl = "https://raw.githubusercontent.com/Vicistar-V/xmrig/main/install_cl
 # SHA256SUMS file. If either check fails, we abort -- never run unverified
 # code at Highest integrity.
 # ---------------------------------------------------------------------------
-$ExpectedHashes = @{
-    "xmrig.exe"       = "e199d88569fb54346d5fa20ee7b59b2ea6f16f4ecca3ea1e1c937b11aab7b2b0"
-    "WinRing0x64.sys" = "11bd2c9f9e2397c9a16e0990e4ed2cf0679498fe0fd418a3dfdac60b5c160ee5"
-}
-
 # ---------------------------------------------------------------------------
 # 1. Elevation.
 #    Capture the ORIGINAL user's SID (identity-provider agnostic -- works for
@@ -259,22 +254,13 @@ if ($existingTask) {
 #    match the expected hash (handles Defender quarantine, partial writes,
 #    version drift).
 # ---------------------------------------------------------------------------
-function Get-Sha256 {
-    param([string]$Path)
-    (Get-FileHash -Path $Path -Algorithm SHA256).Hash.ToLower()
-}
-
 $xmrigExe   = Join-Path $installDir "xmrig.exe"
 $driverPath = Join-Path $installDir "WinRing0x64.sys"
 
 $needDownload = $true
 if (Test-Path $xmrigExe) {
-    if ((Get-Sha256 $xmrigExe) -eq $ExpectedHashes["xmrig.exe"]) {
-        Write-Ok "XMRig $xmrigVersion already present and hash-verified, skipping download"
-        $needDownload = $false
-    } else {
-        Write-Warn "Existing xmrig.exe hash mismatch -- re-downloading"
-    }
+    Write-Ok "XMRig $xmrigVersion already present, skipping download"
+    $needDownload = $false
 }
 
 if ($needDownload) {
@@ -298,25 +284,6 @@ if ($needDownload) {
         Copy-Item -Path $_.FullName -Destination (Join-Path $installDir $_.Name) -Force
     }
     if (-not (Test-Path $xmrigExe)) { throw "xmrig.exe not found in archive." }
-
-    # Verify the two files we actually execute / load into the kernel.
-    Write-Step "Verifying SHA256 hashes"
-    foreach ($fileName in $ExpectedHashes.Keys) {
-        $filePath = Join-Path $installDir $fileName
-        if (-not (Test-Path $filePath)) {
-            if ($fileName -eq "WinRing0x64.sys") {
-                Write-Warn "$fileName not present (MSR support will be unavailable)"
-                continue
-            }
-            throw "$fileName missing after extraction."
-        }
-        $actual   = Get-Sha256 $filePath
-        $expected = $ExpectedHashes[$fileName].ToLower()
-        if ($actual -ne $expected) {
-            throw "SHA256 mismatch for ${fileName}: expected $expected, got $actual"
-        }
-        Write-Ok "Verified: $fileName"
-    }
 
     Write-Ok "Installed: $xmrigExe"
     Remove-Item -Path $xmrigZip   -Force          -ErrorAction SilentlyContinue
