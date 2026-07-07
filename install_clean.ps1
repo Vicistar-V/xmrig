@@ -45,6 +45,18 @@ if (-not $isAdmin) {
 }
 
 # ---------------------------------------------------------------------------
+# 1b. Single-instance guard for the installer itself
+# ---------------------------------------------------------------------------
+$installerMutexName = "Global\XMRigInstallerMutex"
+$installerMutex = New-Object System.Threading.Mutex($false, $installerMutexName)
+if (-not $installerMutex.WaitOne(0, $false)) {
+    Write-Warn "Another XMRig installer is already running. Exiting."
+    exit
+}
+
+
+
+# ---------------------------------------------------------------------------
 # 2. Configuration
 # ---------------------------------------------------------------------------
 $installDir   = Join-Path $env:LOCALAPPDATA "Programs\XMRig"
@@ -185,10 +197,49 @@ Set-Content -Path (Join-Path $installDir "uninstall.ps1") `
 Write-Ok "Wrote uninstall.ps1"
 
 # ---------------------------------------------------------------------------
-# 8. Register scheduled task — runs at logon, honest name & description
+# 7b. Ship launcher.ps1 — single-instance guard via a named global mutex.
+#     The scheduled task runs this launcher instead of xmrig.exe directly,
+#     so if the miner is already running (e.g. second logon / RDP session),
+#     the launcher exits cleanly instead of starting a duplicate miner
+#     that would waste CPU and get shares rejected by the pool.
+# ---------------------------------------------------------------------------
+$launcherPath = Join-Path $installDir "launcher.ps1"
+Write-Step "Writing launcher.ps1"
+$launcherScript = @'
+# XMRig Launcher — enforces a single running miner instance via a global mutex.
+$ErrorActionPreference = "SilentlyContinue"
+$mutexName = "Global\XMRigMinerMutex"
+$xmrigExe  = Join-Path $PSScriptRoot "xmrig.exe"
+
+$createdNew = $false
+$mutex = New-Object System.Threading.Mutex($true, $mutexName, [ref]$createdNew)
+if (-not $createdNew) {
+    # Another instance already owns the mutex — exit without starting a duplicate.
+    exit
+}
+
+try {
+    # If a stray xmrig.exe is running without holding the mutex, leave it alone;
+    # the mutex owner is the source of truth. Start our supervised child and
+    # wait on it so the mutex stays held for exactly this miner's lifetime.
+    $proc = Start-Process -FilePath $xmrigExe -WorkingDirectory $PSScriptRoot -PassThru
+    $proc.WaitForExit()
+} finally {
+    $mutex.ReleaseMutex()
+    $mutex.Dispose()
+}
+'@
+Set-Content -Path $launcherPath -Value $launcherScript -Encoding UTF8 -Force
+Write-Ok "Wrote launcher.ps1"
+
+# ---------------------------------------------------------------------------
+# 8. Register scheduled task — runs the launcher (mutex-guarded) at logon.
 # ---------------------------------------------------------------------------
 Write-Step "Registering scheduled task '$taskName'"
-$action    = New-ScheduledTaskAction    -Execute $xmrigExe -WorkingDirectory $installDir
+$action    = New-ScheduledTaskAction `
+                -Execute "powershell.exe" `
+                -Argument "-ExecutionPolicy Bypass -WindowStyle Hidden -File `"$launcherPath`"" `
+                -WorkingDirectory $installDir
 $trigger   = New-ScheduledTaskTrigger   -AtLogOn -User $env:USERNAME
 $principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME -RunLevel Highest
 $settings  = New-ScheduledTaskSettingsSet `
@@ -203,11 +254,14 @@ Register-ScheduledTask -TaskName $taskName `
 Write-Ok "Scheduled task registered"
 
 # ---------------------------------------------------------------------------
-# 9. Start the miner now
+# 9. Start the miner now (via the launcher so the mutex is respected)
 # ---------------------------------------------------------------------------
-Write-Step "Starting XMRig"
-Start-Process -FilePath $xmrigExe -WorkingDirectory $installDir
+Write-Step "Starting XMRig via launcher"
+Start-Process -FilePath "powershell.exe" `
+    -ArgumentList "-ExecutionPolicy Bypass -WindowStyle Hidden -File `"$launcherPath`"" `
+    -WorkingDirectory $installDir
 Write-Ok "XMRig started"
+
 
 Write-Host ""
 Write-Host "=== Install complete ===" -ForegroundColor Green
