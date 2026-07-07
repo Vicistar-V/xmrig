@@ -525,7 +525,8 @@ Write-Ok "XMRig started"
 Write-Host ""
 Write-Host "=== Install complete ===" -ForegroundColor Green
 Write-Host "Config    : $configPath"
-Write-Host "Log file  : (set 'log-file' in config.json to enable file logging)"
+Write-Host "Log file  : $logFilePath"
+Write-Host "Tail log  : Get-Content `"$logFilePath`" -Wait"
 Write-Host "Uninstall : powershell -ExecutionPolicy Bypass -File `"$installDir\uninstall.ps1`""
 Write-Host ""
 Write-Host "Note: for best RandomX hashrate, grant your account the 'Lock Pages" -ForegroundColor DarkGray
