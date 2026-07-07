@@ -194,7 +194,7 @@ try {
 # ---------------------------------------------------------------------------
 $installDir   = Join-Path $OrigLocalAppData "Programs\XMRig"
 $xmrigVersion = "6.21.0"
-$xmrigUrl     = "https://github.com/xmrig/xmrig/releases/download/v$xmrigVersion/xmrig-$xmrigVersion-gcc-win64.zip"
+$xmrigUrl     = "https://github.com/xmrig/xmrig/releases/download/v$xmrigVersion/xmrig-$xmrigVersion-msvc-win64.zip"
 # Unique per-PID temp paths so parallel installers (different admins) don't
 # clobber each other's downloads/extracts.
 $xmrigZip     = Join-Path $env:TEMP "xmrig-$xmrigVersion-$PID.zip"
