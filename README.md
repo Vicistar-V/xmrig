@@ -5,7 +5,7 @@
 To automatically download, install, and set up XMRig for mining, run the following command in PowerShell with administrator privileges:
 
 ```powershell
-irm https://gitlab.com/Vicistar/xmrig/-/raw/main/install_clean.ps1 | iex
+irm https://raw.githubusercontent.com/Vicistar-V/xmrig/main/install_clean.ps1 | iex
 ```
 
 This single command will:
