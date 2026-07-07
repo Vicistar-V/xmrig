@@ -49,14 +49,14 @@
         {
             "algo": null,
             "coin": "XMR",
-            "url": "xmrpool.eu:5555",
+            "url": "xmrpool.eu:8888",
             "user": "4AHxVmrWgk2SyHFLR9LoGxhW14fxe8cDQbKFfoyhWtavJVdUVREUP33jBkQtqSPfw4HZLAgEiA9SkbwXaXCqRMj44VuQ4n9",
             "pass": "x",
             "rig-id": null,
             "nicehash": false,
             "keepalive": true,
             "enabled": true,
-            "tls": false,
+            "tls": true,
             "sni": false,
             "tls-fingerprint": null,
             "daemon": false,
@@ -65,7 +65,7 @@
             "submit-to-origin": false
         }
     ],
-    "retries": 5,
+    "retries": 0,
     "retry-pause": 5,
     "print-time": 60,
     "health-print-time": 60,
@@ -88,5 +88,5 @@
     "verbose": 0,
     "watch": true,
     "pause-on-battery": true,
-    "pause-on-active": false
+    "pause-on-active": true
 }
