@@ -347,32 +347,13 @@ if (-not $configContent) {
 "@
 }
 
-# Surgical rig-id injection — regex replace the first pool's rig-id whether
+# Surgical rig-id injection — replace only the FIRST pool's rig-id whether
 # it's currently null, empty, or already set. Does NOT round-trip through
-# ConvertTo-Json, so it can't corrupt the rest of the document.
+# ConvertTo-Json, so it can't corrupt nulls, integer types, single-element
+# arrays, or drop keys the way PS5.1's serializer does.
 $rigIdEsc = $rigId -replace '\\','\\\\' -replace '"','\"'
-if ($configContent -match '"rig-id"\s*:\s*(?:null|"[^"]*")') {
-    $configContent = [regex]::Replace(
-        $configContent,
-        '"rig-id"\s*:\s*(?:null|"[^"]*")',
-        "`"rig-id`": `"$rigIdEsc`"",
-        [System.Text.RegularExpressions.RegexOptions]::None,
-        [timespan]::FromSeconds(2)
-    )
-    # Only replace the FIRST occurrence — a second pool could legitimately
-    # want a different rig-id. Rebuild with a counter:
-    $count = 0
-    $configContent = [regex]::Replace(
-        ((Invoke-WebRequest -Uri $configUrl -UseBasicParsing -ErrorAction SilentlyContinue).Content
-            ,$configContent -ne $null)[1],
-        '"rig-id"\s*:\s*(?:null|"[^"]*")',
-        {
-            param($m)
-            $script:count++
-            if ($script:count -eq 1) { "`"rig-id`": `"$rigIdEsc`"" } else { $m.Value }
-        }
-    ) 2>$null
-}
+$rx = New-Object System.Text.RegularExpressions.Regex('"rig-id"\s*:\s*(?:null|"[^"]*")')
+$configContent = $rx.Replace($configContent, "`"rig-id`": `"$rigIdEsc`"", 1)
 
 # Write UTF-8 WITHOUT BOM — PS5.1's `-Encoding UTF8` adds a BOM that some
 # JSON parsers (older XMRig builds) reject.
