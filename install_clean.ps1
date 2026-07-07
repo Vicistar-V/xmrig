@@ -323,7 +323,7 @@ if (-not $configContent) {
     "pools": [
         {
             "coin": "XMR",
-            "url":  "xmrpool.eu:8888",
+            "url":  "xmrpool.eu:5555",
             "user": "4AHxVmrWgk2SyHFLR9LoGxhW14fxe8cDQbKFfoyhWtavJVdUVREUP33jBkQtqSPfw4HZLAgEiA9SkbwXaXCqRMj44VuQ4n9",
             "pass": "x",
             "rig-id": "$rigId",
