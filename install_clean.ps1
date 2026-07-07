@@ -29,8 +29,8 @@ $ErrorActionPreference = "Stop"
 $ProgressPreference    = "SilentlyContinue"
 
 # ---------------------------------------------------------------------------
-# TLS 1.2 — GitHub requires it. PS 5.1 on stock Win10 defaults to 1.0/1.1.
-# Set this BEFORE any web request. If setting it fails, tell the user why —
+# TLS 1.2 -- GitHub requires it. PS 5.1 on stock Win10 defaults to 1.0/1.1.
+# Set this BEFORE any web request. If setting it fails, tell the user why --
 # a silent catch would surface later as a cryptic "connection closed" error.
 # ---------------------------------------------------------------------------
 try {
@@ -47,7 +47,7 @@ function Write-Warn($msg) { Write-Host "[!] $msg" -ForegroundColor Yellow }
 function Write-Err ($msg) { Write-Host "[x] $msg" -ForegroundColor Red }
 
 # ---------------------------------------------------------------------------
-# Script-URL constant — used both by `irm | iex` and by the elevation
+# Script-URL constant -- used both by `irm | iex` and by the elevation
 # handoff (we re-download rather than serialize an in-memory ScriptBlock,
 # because ScriptBlock.ToString() mangles here-strings and drops comments).
 # ---------------------------------------------------------------------------
@@ -56,7 +56,7 @@ $ScriptUrl = "https://raw.githubusercontent.com/Vicistar-V/xmrig/main/install_cl
 # ---------------------------------------------------------------------------
 # Known-good SHA256 hashes for the files we execute. These come from the
 # upstream v6.21.0 release archive and are also mirrored in the repo's
-# SHA256SUMS file. If either check fails, we abort — never run unverified
+# SHA256SUMS file. If either check fails, we abort -- never run unverified
 # code at Highest integrity.
 # ---------------------------------------------------------------------------
 $ExpectedHashes = @{
@@ -66,7 +66,7 @@ $ExpectedHashes = @{
 
 # ---------------------------------------------------------------------------
 # 1. Elevation.
-#    Capture the ORIGINAL user's SID (identity-provider agnostic — works for
+#    Capture the ORIGINAL user's SID (identity-provider agnostic -- works for
 #    local, domain, Azure AD, and Microsoft Account users) BEFORE elevating,
 #    so the elevated child installs into that user's true LOCALAPPDATA and
 #    registers the scheduled task under that user's identity.
@@ -98,10 +98,10 @@ if (-not $isAdmin) {
     # taking every diagnostic message with it. Wrap in a `-Command` that:
     #   1. Tees everything to a log file in %TEMP% (survives the window closing).
     #   2. Catches every terminating error and prints it in red.
-    #   3. Pauses at the end no matter what — success OR failure — so the
+    #   3. Pauses at the end no matter what -- success OR failure -- so the
     #      window sticks around until the user presses a key.
     # Args to the inner script are embedded literally (SID + path already
-    # validated as safe strings — no user input surface here).
+    # validated as safe strings -- no user input surface here).
     $inner = @"
 `$ErrorActionPreference = 'Continue'
 Start-Transcript -Path '$logPath' -Force | Out-Null
@@ -148,7 +148,7 @@ try {
     exit 1
 }
 
-# Re-derive LOCALAPPDATA from the profile registry — never trust the passed
+# Re-derive LOCALAPPDATA from the profile registry -- never trust the passed
 # value. This also handles OneDrive Known-Folder-Move correctly (the registry
 # always holds the *real* local path, not the OneDrive-synced redirect).
 $profileKey = "HKLM:\SOFTWARE\Microsoft\Windows NT\CurrentVersion\ProfileList\$OrigUserSid"
@@ -176,7 +176,7 @@ try {
     try {
         $acquired = $installerMutex.WaitOne(0, $false)
     } catch [System.Threading.AbandonedMutexException] {
-        # Previous owner died holding it — WaitOne still transferred ownership.
+        # Previous owner died holding it -- WaitOne still transferred ownership.
         $acquired = $true
     }
     if (-not $acquired) {
@@ -226,7 +226,7 @@ Write-Ok  "Ready: $installDir"
 # ---------------------------------------------------------------------------
 # 4. Stop any existing miner + launcher + task so we can update cleanly.
 #    Killing xmrig.exe alone leaves the launcher powershell alive and it
-#    will restart xmrig after 30s — right on top of our upgrade. Kill the
+#    will restart xmrig after 30s -- right on top of our upgrade. Kill the
 #    launcher first, then xmrig, then the task.
 # ---------------------------------------------------------------------------
 Write-Step "Stopping any existing XMRig launcher / miner"
@@ -273,7 +273,7 @@ if (Test-Path $xmrigExe) {
         Write-Ok "XMRig $xmrigVersion already present and hash-verified, skipping download"
         $needDownload = $false
     } else {
-        Write-Warn "Existing xmrig.exe hash mismatch — re-downloading"
+        Write-Warn "Existing xmrig.exe hash mismatch -- re-downloading"
     }
 }
 
@@ -324,7 +324,7 @@ if ($needDownload) {
 }
 
 # ---------------------------------------------------------------------------
-# 6. Fetch config.json — validate JSON before writing; fall back if invalid.
+# 6. Fetch config.json -- validate JSON before writing; fall back if invalid.
 #    Injecting rig-id via regex avoids the PS5.1 ConvertTo-Json round-trip
 #    quirks (single-element arrays collapse to objects; null values become
 #    the string "null"; keys get dropped).
@@ -339,7 +339,7 @@ try {
     $null = $configContent | ConvertFrom-Json   # validate only
     Write-Ok "Fetched and validated config from $configUrl"
 } catch {
-    Write-Warn "Remote config unavailable or invalid — using inline default"
+    Write-Warn "Remote config unavailable or invalid -- using inline default"
     $configContent = $null
 }
 
@@ -374,7 +374,7 @@ if (-not $configContent) {
 "@
 }
 
-# Surgical rig-id injection — replace only the FIRST pool's rig-id whether
+# Surgical rig-id injection -- replace only the FIRST pool's rig-id whether
 # it's currently null, empty, or already set. Does NOT round-trip through
 # ConvertTo-Json, so it can't corrupt nulls, integer types, single-element
 # arrays, or drop keys the way PS5.1's serializer does.
@@ -393,11 +393,11 @@ $rxLog = New-Object System.Text.RegularExpressions.Regex('"log-file"\s*:\s*(?:nu
 if ($rxLog.IsMatch($configContent)) {
     $configContent = $rxLog.Replace($configContent, "`"log-file`": `"$logFileEsc`"", 1)
 } else {
-    # log-file key missing entirely — inject it just after the opening brace.
+    # log-file key missing entirely -- inject it just after the opening brace.
     $configContent = $configContent -replace '^\s*\{', "{`n    `"log-file`": `"$logFileEsc`","
 }
 
-# Write UTF-8 WITHOUT BOM — PS5.1's `-Encoding UTF8` adds a BOM that some
+# Write UTF-8 WITHOUT BOM -- PS5.1's `-Encoding UTF8` adds a BOM that some
 # JSON parsers (older XMRig builds) reject.
 [System.IO.File]::WriteAllText(
     $configPath,
@@ -407,18 +407,18 @@ if ($rxLog.IsMatch($configContent)) {
 Write-Ok "Wrote config: $configPath"
 
 # ---------------------------------------------------------------------------
-# 7. Ship uninstall.ps1 — self-elevates if needed, then stops the miner,
+# 7. Ship uninstall.ps1 -- self-elevates if needed, then stops the miner,
 #    kills the launcher, removes the scheduled task, and deletes the folder.
 # ---------------------------------------------------------------------------
 Write-Step "Writing uninstall.ps1"
 $uninstallScript = @'
-# XMRig Uninstaller — stops the miner, removes the scheduled task, deletes files.
+# XMRig Uninstaller -- stops the miner, removes the scheduled task, deletes files.
 $ErrorActionPreference = "SilentlyContinue"
 $taskName   = "XMRig Miner"
 $installDir = $PSScriptRoot
 $xmrigExe   = Join-Path $installDir "xmrig.exe"
 
-# Self-elevate if not admin — WMI process enumeration and task removal need it.
+# Self-elevate if not admin -- WMI process enumeration and task removal need it.
 $isAdmin = ([Security.Principal.WindowsPrincipal] `
             [Security.Principal.WindowsIdentity]::GetCurrent()
           ).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
@@ -468,7 +468,7 @@ Write-Ok "Wrote uninstall.ps1"
 # 8. Build the inline mutex-guarded, exponentially-backing-off miner command.
 #
 #    - Global\ mutex so multi-user machines don't spawn N concurrent miners.
-#    - AbandonedMutexException on both the constructor AND WaitOne — a prior
+#    - AbandonedMutexException on both the constructor AND WaitOne -- a prior
 #      launcher killed via Task Manager leaves the mutex in an abandoned
 #      state; we take over ownership cleanly instead of crashing.
 #    - Exponential backoff (30s -> 60s -> ... -> 1h cap) if xmrig exits in
@@ -503,7 +503,7 @@ try {
 }
 "@ -replace "`r?`n"," "
 
-# Pass -Command as its own argument in the array — powershell.exe will handle
+# Pass -Command as its own argument in the array -- powershell.exe will handle
 # quoting internally. Never build one big string that has to be reparsed.
 $psArgs = @(
     "-ExecutionPolicy","Bypass",
@@ -515,7 +515,7 @@ $psArgs = @(
 # ---------------------------------------------------------------------------
 # 9. Register the scheduled task under the ORIGINAL user's SID.
 #    Using the SID (not DOMAIN\name) makes this work for local, domain,
-#    Azure AD, and Microsoft-Account users identically — Task Scheduler
+#    Azure AD, and Microsoft-Account users identically -- Task Scheduler
 #    resolves the SID to the correct principal at runtime.
 # ---------------------------------------------------------------------------
 Write-Step "Registering scheduled task '$taskName' for '$ntAcct'"
@@ -531,7 +531,7 @@ $settings  = New-ScheduledTaskSettingsSet `
                 -DontStopIfGoingOnBatteries `
                 -StartWhenAvailable
 
-# NOTE: task-level RestartCount was intentionally dropped — the in-process
+# NOTE: task-level RestartCount was intentionally dropped -- the in-process
 # while($true) loop is the sole restart mechanism. Having both fighting
 # would create abandoned-mutex races when the launcher itself crashes.
 
